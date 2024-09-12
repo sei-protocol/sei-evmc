@@ -240,31 +240,30 @@ func (vm *VM) Execute(ctx HostContext, rev Revision,
 }
 
 var (
-	hostContextCounter uintptr
-	hostContextMap     = map[uintptr]HostContext{}
-	hostContextMapMu   sync.Mutex
+	hostContextCounter   uintptr
+	hostContextCounterMu sync.Mutex
+	hostContextMap       = sync.Map{} // map[uintptr]HostContext{}
 )
 
 func addHostContext(ctx HostContext) uintptr {
-	hostContextMapMu.Lock()
+	hostContextCounterMu.Lock()
 	id := hostContextCounter
 	hostContextCounter++
-	hostContextMap[id] = ctx
-	hostContextMapMu.Unlock()
+	hostContextMap.Store(id, ctx)
+	hostContextCounterMu.Unlock()
 	return id
 }
 
 func removeHostContext(id uintptr) {
-	hostContextMapMu.Lock()
-	delete(hostContextMap, id)
-	hostContextMapMu.Unlock()
+	hostContextMap.Delete(id)
 }
 
 func getHostContext(idx uintptr) HostContext {
-	hostContextMapMu.Lock()
-	ctx := hostContextMap[idx]
-	hostContextMapMu.Unlock()
-	return ctx
+	ctx, ok := hostContextMap.Load(idx)
+	if !ok {
+		panic("evmc: host context not found")
+	}
+	return ctx.(HostContext)
 }
 
 func evmcBytes32(in Hash) C.evmc_bytes32 {
