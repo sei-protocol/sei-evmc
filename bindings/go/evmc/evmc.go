@@ -57,6 +57,7 @@ import "C"
 import (
 	"fmt"
 	"sync"
+	"sync/atomic"
 	"unsafe"
 )
 
@@ -240,17 +241,16 @@ func (vm *VM) Execute(ctx HostContext, rev Revision,
 }
 
 var (
-	hostContextCounter   uintptr
+	hostContextCounter   atomic.Uintptr
 	hostContextCounterMu sync.Mutex
 	hostContextMap       = sync.Map{} // map[uintptr]HostContext{}
 )
 
 func addHostContext(ctx HostContext) uintptr {
-	hostContextCounterMu.Lock()
-	id := hostContextCounter
-	hostContextCounter++
+	id := hostContextCounter.Load()
+	cnt := hostContextCounter.Add(1)
+	hostContextCounter.Store(cnt)
 	hostContextMap.Store(id, ctx)
-	hostContextCounterMu.Unlock()
 	return id
 }
 
