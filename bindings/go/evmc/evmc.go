@@ -261,7 +261,7 @@ func removeHostContext(id uintptr) {
 func getHostContext(idx uintptr) HostContext {
 	ctx, ok := hostContextMap.Load(idx)
 	if !ok {
-		panic("evmc: host context not found")
+		panic("evmc: host context not found for index " + fmt.Sprintf("%d", idx))
 	}
 	return ctx.(HostContext)
 }
