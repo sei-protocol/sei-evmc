@@ -241,9 +241,8 @@ func (vm *VM) Execute(ctx HostContext, rev Revision,
 }
 
 var (
-	hostContextCounter   = &atomic.Uintptr{}
-	hostContextCounterMu sync.Mutex
-	hostContextMap       = sync.Map{} // map[uintptr]HostContext{}
+	hostContextCounter atomic.Uintptr
+	hostContextMap     = sync.Map{} // map[uintptr]HostContext{}
 )
 
 func addHostContext(ctx HostContext) uintptr {
