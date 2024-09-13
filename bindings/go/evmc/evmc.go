@@ -247,6 +247,7 @@ var (
 
 func addHostContext(ctx HostContext) uintptr {
 	id := hostContextCounter.Add(1)
+	fmt.Println("addHostContext", id)
 	hostContextMap.Store(id, ctx)
 	return id
 }
