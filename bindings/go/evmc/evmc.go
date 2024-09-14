@@ -56,7 +56,7 @@ import "C"
 
 import (
 	"fmt"
-	"sync"
+	"reflect"
 	"unsafe"
 )
 
@@ -207,7 +207,7 @@ type Result struct {
 func (vm *VM) Execute(ctx HostContext, rev Revision,
 	kind CallKind, static bool, depth int, gas int64,
 	recipient Address, sender Address, input []byte, value Hash,
-	code []byte) (res Result, err error) {
+	code []byte, hcSlot int) (res Result, err error) {
 
 	flags := C.uint32_t(0)
 	if static {
@@ -241,30 +241,30 @@ func (vm *VM) Execute(ctx HostContext, rev Revision,
 
 var (
 	hostContextCounter uintptr
-	hostContextMap     = map[uintptr]HostContext{}
-	hostContextMapMu   sync.Mutex
+
+	histContextSlots = make([]HostContext, 5000)
 )
 
 func addHostContext(ctx HostContext) uintptr {
-	hostContextMapMu.Lock()
-	id := hostContextCounter
-	hostContextCounter++
-	hostContextMap[id] = ctx
-	hostContextMapMu.Unlock()
-	return id
+	idx := ctx.GetTransactionIndex()
+	if idx >= len(histContextSlots) {
+		panic("received more than 5000 transactions in a block")
+	}
+	histContextSlots[idx] = ctx
+	return uintptr(unsafe.Pointer(&histContextSlots[idx]))
 }
 
 func removeHostContext(id uintptr) {
-	hostContextMapMu.Lock()
-	delete(hostContextMap, id)
-	hostContextMapMu.Unlock()
 }
 
 func getHostContext(idx uintptr) HostContext {
-	hostContextMapMu.Lock()
-	ctx := hostContextMap[idx]
-	hostContextMapMu.Unlock()
-	return ctx
+	sh := &reflect.SliceHeader{
+		Data: idx,
+		Len:  1,
+		Cap:  1,
+	}
+	data := *(*[]HostContext)(unsafe.Pointer(sh))
+	return data[0]
 }
 
 func evmcBytes32(in Hash) C.evmc_bytes32 {
