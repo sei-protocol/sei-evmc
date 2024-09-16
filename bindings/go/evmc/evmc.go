@@ -207,7 +207,7 @@ type Result struct {
 func (vm *VM) Execute(ctx HostContext, rev Revision,
 	kind CallKind, static bool, depth int, gas int64,
 	recipient Address, sender Address, input []byte, value Hash,
-	code []byte) (res Result, err error) {
+	code []byte) (err error) {
 
 	flags := C.uint32_t(0)
 	if static {
@@ -225,6 +225,7 @@ func (vm *VM) Execute(ctx HostContext, rev Revision,
 		bytesPtr(code), C.size_t(len(code)))
 	removeHostContext(ctxId)
 
+	res := ctx.GetResult()
 	res.Output = C.GoBytes(unsafe.Pointer(result.output_data), C.int(result.output_size))
 	res.GasLeft = int64(result.gas_left)
 	res.GasRefund = int64(result.gas_refund)
@@ -236,7 +237,7 @@ func (vm *VM) Execute(ctx HostContext, rev Revision,
 		C.evmc_release_result(&result)
 	}
 
-	return res, err
+	return err
 }
 
 var (
