@@ -105,6 +105,8 @@ type HostContext interface {
 	AccessStorage(addr Address, key Hash) AccessStatus
 	GetTransientStorage(addr Address, key Hash) Hash
 	SetTransientStorage(addr Address, key Hash, value Hash)
+	GetTransactionIndex() int
+	GetResult() *Result
 }
 
 //export accountExists
