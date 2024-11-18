@@ -243,13 +243,13 @@ func (vm *VM) Execute(ctx HostContext, rev Revision,
 var (
 	hostContextCounter uintptr
 
-	histContextSlots = make([]HostContext, 10000)
+	histContextSlots = make([]HostContext, 20000)
 )
 
 func addHostContext(ctx HostContext) uintptr {
 	idx := ctx.GetTransactionIndex()
 	if idx >= len(histContextSlots) {
-		panic("received more than 5000 transactions in a block")
+		panic(fmt.Sprintf("received more than 20000 transactions in a block: %d", idx))
 	}
 	histContextSlots[idx] = ctx
 	return uintptr(unsafe.Pointer(&histContextSlots[idx]))
