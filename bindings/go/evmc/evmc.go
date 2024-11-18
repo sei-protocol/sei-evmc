@@ -243,7 +243,7 @@ func (vm *VM) Execute(ctx HostContext, rev Revision,
 var (
 	hostContextCounter uintptr
 
-	histContextSlots = make([]HostContext, 5000)
+	histContextSlots = make([]HostContext, 10000)
 )
 
 func addHostContext(ctx HostContext) uintptr {
