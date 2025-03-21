@@ -116,8 +116,11 @@ const (
 	LatestStableRevision Revision = C.EVMC_LATEST_STABLE_REVISION
 )
 
+const HostContextCap = 20000
+
 type VM struct {
-	handle *C.struct_evmc_vm
+	handle       *C.struct_evmc_vm
+	hostContexts []HostContext
 }
 
 func Load(filename string) (vm *VM, err error) {
@@ -127,7 +130,7 @@ func Load(filename string) (vm *VM, err error) {
 	C.free(unsafe.Pointer(cfilename))
 
 	if loaderErr == C.EVMC_LOADER_SUCCESS {
-		vm = &VM{handle}
+		vm = &VM{handle, make([]HostContext, HostContextCap)}
 	} else {
 		errMsg := C.evmc_last_error_msg()
 		if errMsg != nil {
@@ -147,7 +150,7 @@ func LoadAndConfigure(config string) (vm *VM, err error) {
 	C.free(unsafe.Pointer(cconfig))
 
 	if loaderErr == C.EVMC_LOADER_SUCCESS {
-		vm = &VM{handle}
+		vm = &VM{handle, make([]HostContext, HostContextCap)}
 	} else {
 		errMsg := C.evmc_last_error_msg()
 		if errMsg != nil {
@@ -214,7 +217,7 @@ func (vm *VM) Execute(ctx HostContext, rev Revision,
 		flags |= C.EVMC_STATIC
 	}
 
-	ctxId := addHostContext(ctx)
+	ctxId := vm.addHostContext(ctx)
 	// FIXME: Clarify passing by pointer vs passing by value.
 	evmcRecipient := evmcAddress(recipient)
 	evmcSender := evmcAddress(sender)
@@ -223,7 +226,6 @@ func (vm *VM) Execute(ctx HostContext, rev Revision,
 		C.enum_evmc_call_kind(kind), flags, C.int32_t(depth), C.int64_t(gas),
 		&evmcRecipient, &evmcSender, bytesPtr(input), C.size_t(len(input)), &evmcValue,
 		bytesPtr(code), C.size_t(len(code)))
-	removeHostContext(ctxId)
 
 	res := ctx.GetResult()
 	res.Output = C.GoBytes(unsafe.Pointer(result.output_data), C.int(result.output_size))
@@ -240,22 +242,13 @@ func (vm *VM) Execute(ctx HostContext, rev Revision,
 	return err
 }
 
-var (
-	hostContextCounter uintptr
-
-	histContextSlots = make([]HostContext, 20000)
-)
-
-func addHostContext(ctx HostContext) uintptr {
+func (vm *VM) addHostContext(ctx HostContext) uintptr {
 	idx := ctx.GetTransactionIndex()
-	if idx >= len(histContextSlots) {
+	if idx >= len(vm.hostContexts) {
 		panic(fmt.Sprintf("received more than 20000 transactions in a block: %d", idx))
 	}
-	histContextSlots[idx] = ctx
-	return uintptr(unsafe.Pointer(&histContextSlots[idx]))
-}
-
-func removeHostContext(id uintptr) {
+	vm.hostContexts[idx] = ctx
+	return uintptr(unsafe.Pointer(&vm.hostContexts[idx]))
 }
 
 func getHostContext(idx uintptr) HostContext {
